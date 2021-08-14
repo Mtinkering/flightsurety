@@ -96,9 +96,6 @@ contract FlightSuretyApp {
         returns (bool success, uint256 votes)
     {
       return flightSuretyData.registerAirline(airline);
-        // multi party consensus
-        // provide fund
-        return (success, 0);
     }
 
     /**
