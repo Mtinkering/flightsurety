@@ -10,6 +10,7 @@ contract FlightSuretyData {
     /********************************************************************************************/
     uint private totalFund = 0;
 
+    address private caller;
     address private contractOwner; // Account used to deploy contract
     bool private operational = true; // Blocks all state changes throughout the contract if false
 
@@ -27,11 +28,11 @@ contract FlightSuretyData {
       Status status;
     }
 
-    Registration[] registrationQueue; // Track the registrations which need votes
-    mapping(address => uint) voteCount; // Number of votes for the airlines
+    Registration[] private registrationQueue; // Track the registrations which need votes
+    mapping(address => uint) private voteCount; // Number of votes for the airlines
 
     // Fees paid by airlines
-    mapping(address => uint) fees;
+    mapping(address => uint) private fees;
 
     mapping(address => mapping(address => bool)) private approvals;
 
@@ -81,9 +82,20 @@ contract FlightSuretyData {
       require(registered[msg.sender] == true, "Only registered airline");
       _;
     }
+    
+    modifier onlyAuthorizedCaller() {
+      require(msg.sender == caller, "Caller is not authorized to call the contract");
+      _;
+    }
     /********************************************************************************************/
     /*                                       UTILITY FUNCTIONS                                  */
     /********************************************************************************************/
+    /**
+     * 
+     */
+    function authorizeCaller(address appCaller) external requireContractOwner() {
+      caller = appCaller;
+    }
 
     /**
      * @dev Get operating status of contract
@@ -140,7 +152,7 @@ contract FlightSuretyData {
      *      Can only be called from FlightSuretyApp contract
      *
      */
-    function registerAirline(address airline) external returns (bool, uint256) {
+    function registerAirline(address airline) external onlyAuthorizedCaller() returns (bool success, uint256 votes) {
       require(registered[airline] == false, "Airline registered!");
 
       // First airline, no check

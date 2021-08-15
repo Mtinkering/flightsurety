@@ -3,14 +3,15 @@ const FlightSuretyData = artifacts.require("FlightSuretyData");
 const fs = require("fs");
 
 module.exports = async function (deployer) {
+  // Can be generated from the mnemonic
   let firstAirline = "0xf17f52151EbEF6C7334FAD080c5704D77216b732";
 
   await deployer.deploy(FlightSuretyData);
-  await deployer.deploy(FlightSuretyApp);
 
-  const [data, app] = await Promise.all(
-    [FlightSuretyData, FlightSuretyApp].map((instance) => instance.deployed())
-  );
+  const data = await FlightSuretyData.deployed();
+
+  await deployer.deploy(FlightSuretyApp, data.address);
+  const app = await FlightSuretyApp.deployed();
 
   let config = {
     localhost: {
@@ -30,5 +31,6 @@ module.exports = async function (deployer) {
     "utf-8"
   );
 
+  await data.authorizeCaller(app.address);
   await app.registerAirline(firstAirline);
 };
