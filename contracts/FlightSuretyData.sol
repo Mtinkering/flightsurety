@@ -1,4 +1,5 @@
 pragma solidity ^0.4.25;
+pragma experimental ABIEncoderV2;
 
 import "../node_modules/openzeppelin-solidity/contracts/math/SafeMath.sol";
 
@@ -15,7 +16,7 @@ contract FlightSuretyData {
     bool private operational = true; // Blocks all state changes throughout the contract if false
 
     mapping(address => bool) private registered; // Airline is registered or not
-    uint private registration = 0;
+    uint private committee = 0; // How many are there in the committee
 
     enum Status {
         PENDING,
@@ -74,12 +75,12 @@ contract FlightSuretyData {
     }
 
     modifier onlyAuthorizedAirline() {
-      require(fees[msg.sender] >= 10 ether, "Not authorized to perform action");
+      require(fees[tx.origin] >= 10 ether, "Not paid fee membership");
       _;
     }
 
     modifier onlyRegistered() {
-      require(registered[msg.sender] == true, "Only registered airline");
+      require(registered[tx.origin] == true, "Only registered airline");
       _;
     }
     
@@ -90,13 +91,6 @@ contract FlightSuretyData {
     /********************************************************************************************/
     /*                                       UTILITY FUNCTIONS                                  */
     /********************************************************************************************/
-    /**
-     * 
-     */
-    function authorizeCaller(address appCaller) external requireContractOwner() {
-      caller = appCaller;
-    }
-
     /**
      * @dev Get operating status of contract
      *
@@ -120,31 +114,67 @@ contract FlightSuretyData {
     /********************************************************************************************/
 
     /**
-     * Approve the registration
      */
-    function approveRegistration(uint id) external onlyAuthorizedAirline() {
-      // Can't approve twice for the same airline
-      Registration memory reg = registrationQueue[id];
-
-      if (approvals[msg.sender][reg.airline] == false) {
-        approvals[msg.sender][reg.airline] = true;
-        voteCount[reg.airline].add(1);
-      }
-
-      if (voteCount[reg.airline] >= registration/2) {
-        registrationQueue[reg.id].status = Status.APPROVED;
-
-        registered[reg.airline] = true;
-        registration.add(1);
-      }
+    function getVoteCount(address airline) external view returns (uint) {
+      return voteCount[airline];
     }
 
     /**
-     * Only registered airline can pay membership
      */
-    function payMembership() external onlyRegistered() payable {
-      fees[msg.sender].add(msg.value);
-      totalFund.add(msg.value);
+    function getCommittee() external view returns (uint) {
+      return committee;
+    }
+
+    /**
+     */
+    function getTotalFund() external view returns (uint) {
+      return totalFund;
+    }
+
+    /**
+     */
+    function getMembershipFee() external view returns (uint) {
+      return fees[tx.origin];
+    }
+
+    /**
+     */
+    function getRegistrationQueue() external view returns (Registration[] memory) {
+      return registrationQueue;
+    }
+
+    /**
+     * Check if the airline is registered
+     */
+    function isAirlineRegistered(address airline) external view returns (bool) {
+      return registered[airline];
+    }
+
+    /**
+     * Authorize the contract that can call this contract
+     */
+    function authorizeCaller(address appCaller) external requireContractOwner() {
+      caller = appCaller;
+    }
+
+    /**
+     * Approve the registration
+     */
+    function approveRegistration(uint id) external onlyAuthorizedAirline() onlyAuthorizedCaller() {
+      Registration memory reg = registrationQueue[id];
+
+      // Can't approve twice for the same airline
+      if (approvals[tx.origin][reg.airline] == false) {
+        approvals[tx.origin][reg.airline] = true;
+        voteCount[reg.airline] = voteCount[reg.airline].add(1);
+      }
+
+      if (voteCount[reg.airline] >= committee/2) {
+        registrationQueue[reg.id].status = Status.APPROVED;
+
+        registered[reg.airline] = true;
+        committee += 1;
+      }
     }
 
     /**
@@ -152,26 +182,26 @@ contract FlightSuretyData {
      *      Can only be called from FlightSuretyApp contract
      *
      */
-    function registerAirline(address airline) external onlyAuthorizedCaller() returns (bool success, uint256 votes) {
+    function registerAirline(address airline) external onlyAuthorizedCaller() {
       require(registered[airline] == false, "Airline registered!");
 
       // First airline, no check
-      if (registration == 0) {
-        registration += 1;
+      if (committee == 0) {
+        committee += 1;
         registered[airline] = true;
-        return (true, 0);
+        return;
       }
 
       // Non-registered airline can't register others
-      if (registered[msg.sender] != true) {
-        return (false, 0);
+      if (registered[tx.origin] != true) {
+        return;
       }
 
       // Up to 4th registration, no multi party consensus
-      if (registration < 4) {
-        registration += 1;
+      if (committee < 4) {
+        committee += 1;
         registered[airline] = true;
-        return (true, 0);
+        return;
       }
 
       // 5th one onwards, add to queue for voting
@@ -182,7 +212,7 @@ contract FlightSuretyData {
         Status.PENDING
       ));
 
-      return (false, voteCount[airline]);
+      return;
     }
 
     /**
@@ -205,9 +235,13 @@ contract FlightSuretyData {
     /**
      * @dev Initial funding for the insurance. Unless there are too many delayed flights
      *      resulting in insurance payouts, the contract should be self-sustaining
+     *      Only registered airline can pay membership
      *
      */
-    function fund() public payable {}
+    function fund() public onlyRegistered() payable  {
+      fees[tx.origin] = fees[tx.origin].add(msg.value);
+      totalFund = totalFund.add(msg.value);
+    }
 
     function getFlightKey(
         address airline,

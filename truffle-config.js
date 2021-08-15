@@ -1,6 +1,6 @@
 // Use ganache with this seed phrase
 var mnemonic =
-  "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat";
+  "prevent tent worth clinic chuckle smile move gate valley gain social path";
 
 module.exports = {
   networks: {
