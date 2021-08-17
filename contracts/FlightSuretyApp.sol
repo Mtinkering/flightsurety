@@ -119,7 +119,16 @@ contract FlightSuretyApp {
         string memory flight,
         uint256 timestamp,
         uint8 statusCode
-    ) internal pure {}
+    ) internal {
+
+
+      // bytes32 key = getFlightKey(airline, flight, timestamp);
+
+      // // TODO: check if 2 statuses
+      // if (statusCode == STATUS_CODE_LATE_AIRLINE || statusCode == STATUS_CODE_LATE_TECHNICAL) {
+      //   flightSuretyData.creditInsurees(airline, flight, timestamp);
+      // }
+    }
 
     // Generate a request for oracles to fetch flight information
     function fetchFlightStatus(
@@ -200,21 +209,21 @@ contract FlightSuretyApp {
 
     // Register an oracle with the contract
     function registerOracle() external payable {
-        // Require registration fee
-        require(msg.value >= REGISTRATION_FEE, "Registration fee is required");
+      // Require registration fee
+      require(msg.value >= REGISTRATION_FEE, "Registration fee is required");
 
-        uint8[3] memory indexes = generateIndexes(msg.sender);
+      uint8[3] memory indexes = generateIndexes(msg.sender);
 
-        oracles[msg.sender] = Oracle({isRegistered: true, indexes: indexes});
+      oracles[msg.sender] = Oracle({isRegistered: true, indexes: indexes});
     }
 
     function getMyIndexes() external view returns (uint8[3]) {
-        require(
-            oracles[msg.sender].isRegistered,
-            "Not registered as an oracle"
-        );
+      require(
+        oracles[msg.sender].isRegistered,
+        "Not registered as an oracle"
+      );
 
-        return oracles[msg.sender].indexes;
+      return oracles[msg.sender].indexes;
     }
 
     // Called by oracle when a response is available to an outstanding request
@@ -251,6 +260,7 @@ contract FlightSuretyApp {
         if (
             oracleResponses[key].responses[statusCode].length >= MIN_RESPONSES
         ) {
+            oracleResponses[key].isOpen = false;
             emit FlightStatusInfo(airline, flight, timestamp, statusCode);
 
             // Handle flight status as appropriate

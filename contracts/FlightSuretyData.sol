@@ -9,6 +9,8 @@ contract FlightSuretyData {
     /********************************************************************************************/
     /*                                       DATA VARIABLES                                     */
     /********************************************************************************************/
+    // uint private constant MULTIPLER = 3/2;
+
     uint private totalFund = 0;
 
     address private caller;
@@ -29,6 +31,11 @@ contract FlightSuretyData {
       Status status;
     }
 
+    struct Purchase {
+      address customer;
+      uint amount;
+    }
+
     Registration[] private registrationQueue; // Track the registrations which need votes
     mapping(address => uint) private voteCount; // Number of votes for the airlines
 
@@ -36,6 +43,13 @@ contract FlightSuretyData {
     mapping(address => uint) private fees;
 
     mapping(address => mapping(address => bool)) private approvals;
+
+    /* Passengers */
+    // mapping(address => mapping(bytes32 => uint)) orders; // Mapping of customer to flight he purchases with amount
+
+    mapping(bytes32 => Purchase[]) purchases; // Flight key to all the purchases
+
+    mapping(address => uint) refund; // Mapping of the refund he should receive
 
     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
@@ -224,7 +238,21 @@ contract FlightSuretyData {
     /**
      *  @dev Credits payouts to insurees
      */
-    function creditInsurees() external pure {}
+    function creditInsurees(
+      address airline,
+      string flight,
+      uint256 timestamp
+    ) external onlyAuthorizedCaller() {
+      // Get the key then multiply the profit for all passengers
+      bytes32 key = getFlightKey(airline, flight, timestamp);
+      Purchase[] memory assured = purchases[key];
+
+      for (uint i = 0; i < assured.length; i++) {
+        address customer = assured[i].customer;
+        uint amount = assured[i].amount;
+        refund[customer] = refund[customer].add(amount.mul(3).div(2));
+      }
+    }
 
     /**
      *  @dev Transfers eligible payout funds to insuree
