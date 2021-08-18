@@ -24,18 +24,11 @@ contract FlightSuretyApp {
     uint8 private constant STATUS_CODE_LATE_WEATHER = 30;
     uint8 private constant STATUS_CODE_LATE_TECHNICAL = 40;
     uint8 private constant STATUS_CODE_LATE_OTHER = 50;
+    uint8 private constant STATUS_CODE_OPEN_PURCHASE = 255;
 
     address private contractOwner; // Account used to deploy contract
 
     FlightSuretyData flightSuretyData;
-
-    struct Flight {
-        bool isRegistered;
-        uint8 statusCode;
-        uint256 updatedTimestamp;
-        address airline;
-    }
-    mapping(bytes32 => Flight) private flights;
 
     /********************************************************************************************/
     /*                                       FUNCTION MODIFIERS                                 */
@@ -108,7 +101,16 @@ contract FlightSuretyApp {
      * @dev Register a future flight for insuring.
      *
      */
-    function registerFlight() external pure {}
+    function registerFlight(
+      string flight,
+      uint timestamp
+    ) external {
+      flightSuretyData.registerFlight(
+        flight,
+        timestamp,
+        STATUS_CODE_OPEN_PURCHASE
+      );
+    }
 
     /**
      * @dev Called after oracle has updated flight status
@@ -116,18 +118,15 @@ contract FlightSuretyApp {
      */
     function processFlightStatus(
         address airline,
-        string memory flight,
+        string flight,
         uint256 timestamp,
         uint8 statusCode
     ) internal {
+      flightSuretyData.updateFlightStatusCode(airline, flight, timestamp, statusCode);
 
-
-      // bytes32 key = getFlightKey(airline, flight, timestamp);
-
-      // // TODO: check if 2 statuses
-      // if (statusCode == STATUS_CODE_LATE_AIRLINE || statusCode == STATUS_CODE_LATE_TECHNICAL) {
-      //   flightSuretyData.creditInsurees(airline, flight, timestamp);
-      // }
+      if (statusCode == STATUS_CODE_LATE_AIRLINE || statusCode == STATUS_CODE_LATE_TECHNICAL) {
+        flightSuretyData.creditInsurees(airline, flight, timestamp);
+      }
     }
 
     // Generate a request for oracles to fetch flight information
@@ -320,5 +319,24 @@ contract FlightSuretyApp {
 interface FlightSuretyData {
   function registerAirline(address airline) external;
   function approveRegistration(uint id) external;
-  function fund() public payable;
+  function fund() external payable;
+
+  function registerFlight(
+    string flight,
+    uint timestamp,
+    uint8 statusCode
+  ) external;
+
+  function updateFlightStatusCode(
+    address airline,
+    string flight,
+    uint256 timestamp,
+    uint8 statusCode
+  ) external;
+
+  function creditInsurees(
+    address airline,
+    string flight,
+    uint256 timestamp
+  ) external;
 }

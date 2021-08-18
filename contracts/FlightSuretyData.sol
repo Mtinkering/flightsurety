@@ -17,6 +17,8 @@ contract FlightSuretyData {
     address private contractOwner; // Account used to deploy contract
     bool private operational = true; // Blocks all state changes throughout the contract if false
 
+    uint8 private constant STATUS_CODE_OPEN_PURCHASE = 255;
+
     mapping(address => bool) private registered; // Airline is registered or not
     uint private committee = 0; // How many are there in the committee
 
@@ -45,11 +47,23 @@ contract FlightSuretyData {
     mapping(address => mapping(address => bool)) private approvals;
 
     /* Passengers */
-    // mapping(address => mapping(bytes32 => uint)) orders; // Mapping of customer to flight he purchases with amount
+    mapping(address => mapping(bytes32 => uint)) orders; // Mapping of customer to flight he purchases with amount
 
     mapping(bytes32 => Purchase[]) purchases; // Flight key to all the purchases
 
     mapping(address => uint) refund; // Mapping of the refund he should receive
+
+
+    /* Flights */
+    struct Flight {
+      bool isRegistered;
+      uint8 statusCode;
+      uint256 timestamp;
+      address airline;
+      string flight;
+    }
+    mapping(bytes32 => Flight) private flights;
+    Flight[] private flightList;
 
     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
@@ -165,6 +179,20 @@ contract FlightSuretyData {
     }
 
     /**
+     * List of flights available to purchase insurance
+     */
+    function getFlightList() external view returns (Flight[] memory) {
+      return flightList;
+    }
+
+    /**
+     * List of flights available to purchase insurance
+     */
+    function getTotalRefund() external view returns (uint) {
+      return refund[tx.origin];
+    }
+
+    /**
      * Authorize the contract that can call this contract
      */
     function authorizeCaller(address appCaller) external requireContractOwner() {
@@ -189,6 +217,23 @@ contract FlightSuretyData {
         registered[reg.airline] = true;
         committee += 1;
       }
+    }
+
+    /**
+     * @dev Register a future flight for insuring.
+     *  Only airline that paid the fee
+     */
+    function registerFlight(
+      string flight,
+      uint timestamp,
+      uint8 statusCode
+    ) external onlyAuthorizedAirline() onlyAuthorizedCaller() {
+
+      bytes32 key = getFlightKey(tx.origin, flight, timestamp);
+      require(!flights[key].isRegistered, "Flight registered!");
+      Flight memory f = Flight(true, statusCode, timestamp, tx.origin, flight);
+      flights[key] = f;
+      flightList.push(f);
     }
 
     /**
@@ -229,11 +274,42 @@ contract FlightSuretyData {
       return;
     }
 
+    function updateFlightStatusCode(
+      address airline,
+      string flight,
+      uint256 timestamp,
+      uint8 statusCode
+    ) external onlyAuthorizedCaller() {
+      bytes32 key = getFlightKey(airline, flight, timestamp);
+      flights[key].statusCode = statusCode;
+    }
+
     /**
      * @dev Buy insurance for a flight
      *
      */
-    function buy() external payable {}
+    function buy(
+      address airline,
+      string flight,
+      uint timestamp
+    ) external payable {
+      require(msg.value <= 1 ether, "Purchase is limited to 1 ether for a flight");
+      bytes32 key = getFlightKey(airline, flight, timestamp);
+
+      uint amount = orders[tx.origin][key];
+      require(msg.value.add(amount) <= 1 ether, "Total purchase is too much for a flight");
+
+      // Check if the flight has been insured. Wont allow to buy insured flights
+      // Insured means the flight status code is now known
+      require(flights[key].statusCode == STATUS_CODE_OPEN_PURCHASE, "Flight is no longer available for purchase");
+
+      orders[tx.origin][key] = orders[tx.origin][key].add(amount);
+
+      purchases[key].push(Purchase(
+        tx.origin,
+        msg.value
+      ));
+    }
 
     /**
      *  @dev Credits payouts to insurees
@@ -258,7 +334,16 @@ contract FlightSuretyData {
      *  @dev Transfers eligible payout funds to insuree
      *
      */
-    function pay() external pure {}
+    function pay() external {
+      uint refundAmount = refund[tx.origin];
+
+      require(refundAmount <= totalFund, "Fund insufficient");
+      refund[tx.origin] = 0;
+
+      totalFund -= refundAmount;
+
+      tx.origin.transfer(refundAmount);
+    }
 
     /**
      * @dev Initial funding for the insurance. Unless there are too many delayed flights
