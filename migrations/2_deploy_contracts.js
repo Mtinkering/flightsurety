@@ -4,7 +4,7 @@ const fs = require("fs");
 
 module.exports = async function (deployer) {
   // Can be generated from the mnemonic
-  let firstAirline = "0xe117127232F7e4Dd0542560FE0CEe86cAD4C13F9";
+  let firstAirline = "0xf17f52151EbEF6C7334FAD080c5704D77216b732";
 
   await deployer.deploy(FlightSuretyData);
 

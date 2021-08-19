@@ -38,12 +38,18 @@
   <main class="container" style="margin-top: 50px;">
     <h2>Passengers</h2>
     <div class="row top-20">
-      <label class="form">Flight Available</label> <input type="text" id="passenger-flight-number">
+      <label class="form">Flight Available</label>
+      <btn class="btn btn-primary" id="passenger-get-flights-button">Get flights</btn>
+      <div id="flight-available-section"></div>
+    </div>
+    <div class="row top-20">
+      <label class="form">Amount in ether</label> <input type="text" id="passenger-buy-amount">
       <btn class="btn btn-primary" id="passenger-buy-insurance-button">Buy Insurance</btn>
     </div>
-
+  </main>
+  <main class="container" style="margin-top: 50px;">
     <div class="row top-20">
-      <label class="form">Total refund (if any)</label> <input disabled type="text" id="passenger-refund-status">
+      <label class="form">Total refund (if any)</label> <input disabled type="text" id="passenger-refund-amount">
       <btn class="btn btn-primary" id="passenger-check-refund-button">Check Refund</btn>
       <btn class="btn btn-primary" id="passenger-claim-refund-button">Claim Refund</btn>
     </div>
@@ -52,11 +58,14 @@
   <main class="container" style="margin-top: 50px;">
     <h2>Claim insurance</h2>
     <div class="row top-20">
-      <label class="form">Flight</label> <input type="text" id="flight-number">
-      <btn class="btn btn-primary" id="submit-oracle">Submit to Oracles</btn>
+      <label class="form">Flight Available</label>
+      <btn class="btn btn-primary" id="flight-available-section-for-status-check-button">Get flights</btn>
+      <div id="flight-available-section-for-status-check"></div>
+
+
     </div>
     <div class="row top-20">
-      <btn class="btn btn-primary" id="get-flight-status-button">Get Flight Status</btn>
+      <btn class="btn btn-primary" id="insure-flight-status-button">Get Flight Status</btn>
     </div>
   </main>
 

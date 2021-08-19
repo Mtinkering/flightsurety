@@ -304,9 +304,8 @@ contract("Flight Surety Tests", async (accounts) => {
     );
 
     // Now pay membership fee
-    await web3.eth.sendTransaction({
+    await data.fund({
       from: accounts[1],
-      to: data.address,
       value: AMOUNT_10_ETH,
     });
 

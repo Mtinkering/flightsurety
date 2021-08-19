@@ -24,7 +24,6 @@ export default class Contract {
   initialize(callback) {
     this.web3.eth.getAccounts((error, accts) => {
       this.owner = accts[0];
-
       let counter = 1;
 
       while (this.airlines.length < 5) {
@@ -49,33 +48,73 @@ export default class Contract {
   payMembership() {
     const AMOUNT_10_ETH = this.web3.utils.toWei("10", "ether");
     let self = this;
-    return this.flightSuretyApp.methods.fund().send({
-      from: self.owner,
+
+    return this.flightSuretyData.methods.fund().send({
+      from: self.airlines[0],
       value: AMOUNT_10_ETH,
     });
   }
 
   registerFlight(flight, timestamp) {
-    return this.flightSuretyApp.methods.registerFlight(flight, timestamp).send({
-      from: self.owner,
-    });
+    let self = this;
+
+    return this.flightSuretyData.methods
+      .getMembershipFee()
+      .call({
+        from: self.airlines[0],
+      })
+      .then((x) => {
+        console.log(`current membership fee: ${x}`);
+        return self.flightSuretyApp.methods
+          .registerFlight(flight, timestamp)
+          .send({
+            from: self.airlines[0],
+            gas: 3000000,
+          });
+      });
   }
 
   getFlights() {
     return this.flightSuretyData.methods.getFlightList().call();
   }
 
-  fetchFlightStatus(flight, callback) {
+  getRefund() {
     let self = this;
-    let payload = {
-      airline: self.airlines[0],
-      flight: flight,
-      timestamp: Math.floor(Date.now() / 1000),
-    };
-    self.flightSuretyApp.methods
-      .fetchFlightStatus(payload.airline, payload.flight, payload.timestamp)
-      .send({ from: self.owner }, (error, result) => {
-        callback(error, payload);
+    return this.flightSuretyData.methods.getRefund().call({
+      from: self.passengers[0],
+    });
+  }
+
+  claimRefund() {
+    let self = this;
+    return this.flightSuretyApp.methods.pay().send({
+      from: self.passengers[0],
+    });
+  }
+
+  buyInsurance({ airline, flight, timestamp, value }) {
+    let self = this;
+
+    this.flightSuretyData.methods
+      .getOrder(airline, flight, timestamp)
+      .call({ from: self.passengers[0] })
+      .then((x) => {
+        console.log(`current amount for this flight is : ${x}`);
+        return this.flightSuretyData.methods
+          .buy(airline, flight, timestamp)
+          .send({
+            from: self.passengers[0],
+            gas: 3000000,
+            value: self.web3.utils.toWei(String(value), "ether"),
+          });
       });
+  }
+
+  fetchFlightStatus({ flight, airline, timestamp }) {
+    let self = this;
+
+    return self.flightSuretyApp.methods
+      .fetchFlightStatus(airline, flight, timestamp)
+      .send({ from: self.owner });
   }
 }
