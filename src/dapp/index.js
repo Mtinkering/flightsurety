@@ -115,6 +115,7 @@ import "./flightsurety.css";
             let data = flightToPurchase[idx];
             const { flight, timestamp, airline } = data;
             await contract.buyInsurance({ flight, timestamp, airline, value });
+            alert(`successfully bought: ${value} ether`);
           }
         } catch (e) {
           console.log(e);
@@ -127,6 +128,7 @@ import "./flightsurety.css";
       async () => {
         try {
           const amount = await contract.getRefund();
+          console.log(`refund amount: ${amount}`);
           DOM.elid("passenger-refund-amount").value = amount;
         } catch (e) {
           console.log(e);

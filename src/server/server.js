@@ -81,6 +81,7 @@ web3.eth.getAccounts().then((accounts) => {
           console.log(data);
           flightSuretyApp.methods.submitOracleResponse(...data).send({
             from: oracle,
+            gas: 3000000,
           });
         }
       });

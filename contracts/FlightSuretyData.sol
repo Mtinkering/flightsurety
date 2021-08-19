@@ -63,7 +63,7 @@ contract FlightSuretyData {
       string flight;
     }
     mapping(bytes32 => Flight) private flights;
-    Flight[] private flightList;
+    bytes32[] private flightList;
 
     /********************************************************************************************/
     /*                                       EVENT DEFINITIONS                                  */
@@ -192,8 +192,20 @@ contract FlightSuretyData {
     /**
      * List of flights available to purchase insurance
      */
+    function getFlightStatusCode(address airline,
+      string flight,
+      uint timestamp) external view returns (Flight memory) {
+      bytes32 key = getFlightKey(airline, flight, timestamp);
+      return flights[key];
+    }
+
     function getFlightList() external view returns (Flight[] memory) {
-      return flightList;
+      Flight[] memory _flights = new Flight[](flightList.length);
+
+      for (uint i = 0 ; i < flightList.length; i ++) {
+        _flights[i] = flights[flightList[i]];
+      }
+      return _flights;
     }
 
     /**
@@ -242,9 +254,8 @@ contract FlightSuretyData {
 
       bytes32 key = getFlightKey(tx.origin, flight, timestamp);
       require(!flights[key].isRegistered, "Flight registered");
-      Flight memory f = Flight(true, statusCode, timestamp, tx.origin, flight);
-      flights[key] = f;
-      flightList.push(f);
+      flights[key] = Flight(true, statusCode, timestamp, tx.origin, flight);
+      flightList.push(key);
     }
 
     /**

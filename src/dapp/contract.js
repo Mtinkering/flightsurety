@@ -87,6 +87,12 @@ export default class Contract {
 
   claimRefund() {
     let self = this;
+    this.flightSuretyData.methods
+      .getTotalFund()
+      .call({
+        from: self.passengers[0],
+      })
+      .then(console.log);
     return this.flightSuretyApp.methods.pay().send({
       from: self.passengers[0],
     });
@@ -94,6 +100,11 @@ export default class Contract {
 
   buyInsurance({ airline, flight, timestamp, value }) {
     let self = this;
+
+    this.flightSuretyData.methods
+      .getFlightStatusCode(airline, flight, timestamp)
+      .call({ from: self.passengers[0] })
+      .then(console.log);
 
     this.flightSuretyData.methods
       .getOrder(airline, flight, timestamp)
