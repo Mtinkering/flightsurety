@@ -1,5 +1,4 @@
 const Test = require("../config/testConfig.js");
-const BigNumber = require("bignumber.js");
 const { expectRevert } = require("@openzeppelin/test-helpers");
 
 const Status = {
@@ -9,6 +8,7 @@ const Status = {
 
 const AMOUNT_5_ETH = web3.utils.toWei("5", "ether");
 const AMOUNT_10_ETH = web3.utils.toWei("10", "ether");
+const STATUS_CODE_OPEN_PURCHASE = 255;
 
 contract("Flight Surety Tests", async (accounts) => {
   let config;
@@ -69,6 +69,10 @@ contract("Flight Surety Tests", async (accounts) => {
   //   await config.flightSuretyData.setOperatingStatus(true);
   // });
 
+  /****************************************************************************************/
+  /* Airline registration                                                                  */
+  /****************************************************************************************/
+
   it("registers first airline from deployment", async () => {
     let result = await config.data.isAirlineRegistered(accounts[1]);
     assert.equal(result, true, "First airline should be registered");
@@ -79,7 +83,7 @@ contract("Flight Surety Tests", async (accounts) => {
       config.app.registerAirline(config.firstAirline, {
         from: config.owner,
       }),
-      "Airline registered!"
+      "Airline registered"
     );
   });
 
@@ -165,7 +169,7 @@ contract("Flight Surety Tests", async (accounts) => {
       app.approveRegistration(registrationIdInTheQueue, {
         from: accounts[1],
       }),
-      "Not paid fee membership"
+      "Not paid membership fee"
     );
 
     assert.equal(
@@ -284,5 +288,47 @@ contract("Flight Surety Tests", async (accounts) => {
     assert.equal(result[0].status, Status.APPROVED);
 
     assert.equal(await data.getCommittee(), 5);
+  });
+
+  /****************************************************************************************/
+  /* Flight                                                              */
+  /****************************************************************************************/
+  it("allows airline that paid fees to register flight", async () => {
+    const { app, data } = config;
+
+    await expectRevert(
+      app.registerFlight("FLIGHT01", Math.floor(Date.now() / 1000), {
+        from: accounts[1], // first airline
+      }),
+      "Not paid membership fee"
+    );
+
+    // Now pay membership fee
+    await web3.eth.sendTransaction({
+      from: accounts[1],
+      to: data.address,
+      value: AMOUNT_10_ETH,
+    });
+
+    // Then can register flight
+    const t = Math.floor(Date.now() / 1000);
+    await app.registerFlight("FLIGHT01", t, {
+      from: accounts[1], // first airline
+    });
+    const flights = await data.getFlightList();
+    assert.equal(flights.length, 1);
+    assert.equal(flights[0].isRegistered, true);
+    assert.equal(flights[0].statusCode, STATUS_CODE_OPEN_PURCHASE);
+    assert.equal(flights[0].timestamp, t);
+    assert.equal(flights[0].airline, accounts[1]);
+    assert.equal(flights[0].flight, "FLIGHT01");
+
+    // But can't register the same flight with same departure again
+    await expectRevert(
+      app.registerFlight("FLIGHT01", t, {
+        from: accounts[1], // first airline
+      }),
+      "Flight registered"
+    );
   });
 });

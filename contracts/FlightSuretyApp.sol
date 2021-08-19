@@ -80,21 +80,25 @@ contract FlightSuretyApp {
     /********************************************************************************************/
     /*                                     SMART CONTRACT FUNCTIONS                             */
     /********************************************************************************************/
+    function pay() external {
+      flightSuretyData.pay();
+    }
+
     /**
      * @dev Add an airline to the registration queue
      *
      */
     function registerAirline(address airline) external
     {
-      return flightSuretyData.registerAirline(airline);
+      flightSuretyData.registerAirline(airline);
     }
 
     function approveRegistration(uint id) external {
-      return flightSuretyData.approveRegistration(id);
+      flightSuretyData.approveRegistration(id);
     }
 
     function fund() external payable {
-      return flightSuretyData.fund();
+      flightSuretyData.fund();
     }
 
     /**
@@ -320,6 +324,7 @@ interface FlightSuretyData {
   function registerAirline(address airline) external;
   function approveRegistration(uint id) external;
   function fund() external payable;
+  function pay() external;
 
   function registerFlight(
     string flight,

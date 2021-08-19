@@ -17,6 +17,7 @@ To run truffle tests:
 
 `truffle test ./test/flightSurety.js`
 `truffle test ./test/oracles.js`
+`truffle test ./test/passengers.js`
 
 To use the dapp:
 

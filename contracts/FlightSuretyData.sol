@@ -103,7 +103,7 @@ contract FlightSuretyData {
     }
 
     modifier onlyAuthorizedAirline() {
-      require(fees[tx.origin] >= 10 ether, "Not paid fee membership");
+      require(fees[tx.origin] >= 10 ether, "Not paid membership fee");
       _;
     }
 
@@ -140,6 +140,17 @@ contract FlightSuretyData {
     /********************************************************************************************/
     /*                                     SMART CONTRACT FUNCTIONS                             */
     /********************************************************************************************/
+
+    /**
+     */
+    function getOrder(
+      address airline,
+      string flight,
+      uint timestamp
+    ) external view returns (uint) {
+      bytes32 key = getFlightKey(airline, flight, timestamp);
+      return orders[tx.origin][key];
+    }
 
     /**
      */
@@ -186,9 +197,9 @@ contract FlightSuretyData {
     }
 
     /**
-     * List of flights available to purchase insurance
+     * Check refund for a customer
      */
-    function getTotalRefund() external view returns (uint) {
+    function getRefund() external view returns (uint) {
       return refund[tx.origin];
     }
 
@@ -230,7 +241,7 @@ contract FlightSuretyData {
     ) external onlyAuthorizedAirline() onlyAuthorizedCaller() {
 
       bytes32 key = getFlightKey(tx.origin, flight, timestamp);
-      require(!flights[key].isRegistered, "Flight registered!");
+      require(!flights[key].isRegistered, "Flight registered");
       Flight memory f = Flight(true, statusCode, timestamp, tx.origin, flight);
       flights[key] = f;
       flightList.push(f);
@@ -242,7 +253,7 @@ contract FlightSuretyData {
      *
      */
     function registerAirline(address airline) external onlyAuthorizedCaller() {
-      require(registered[airline] == false, "Airline registered!");
+      require(registered[airline] == false, "Airline registered");
 
       // First airline, no check
       if (committee == 0) {
@@ -296,14 +307,17 @@ contract FlightSuretyData {
       require(msg.value <= 1 ether, "Purchase is limited to 1 ether for a flight");
       bytes32 key = getFlightKey(airline, flight, timestamp);
 
+      require(flights[key].isRegistered == true, "Flight is not registered");
+
       uint amount = orders[tx.origin][key];
       require(msg.value.add(amount) <= 1 ether, "Total purchase is too much for a flight");
 
-      // Check if the flight has been insured. Wont allow to buy insured flights
-      // Insured means the flight status code is now known
+      // Flight must be open for purchase
       require(flights[key].statusCode == STATUS_CODE_OPEN_PURCHASE, "Flight is no longer available for purchase");
 
-      orders[tx.origin][key] = orders[tx.origin][key].add(amount);
+      totalFund = totalFund.add(msg.value);
+
+      orders[tx.origin][key] = orders[tx.origin][key].add(msg.value);
 
       purchases[key].push(Purchase(
         tx.origin,
@@ -334,7 +348,7 @@ contract FlightSuretyData {
      *  @dev Transfers eligible payout funds to insuree
      *
      */
-    function pay() external {
+    function pay() external onlyAuthorizedCaller() {
       uint refundAmount = refund[tx.origin];
 
       require(refundAmount <= totalFund, "Fund insufficient");

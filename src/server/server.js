@@ -4,6 +4,7 @@ import Web3 from "web3";
 import express from "express";
 
 const ORACLES_COUNT = 20;
+const INDEX_OFFSET = 10; // Reserve first 10 addresses for airlines and passengers
 
 const STATUS_CODE_UNKNOWN = 0;
 const STATUS_CODE_ON_TIME = 10;
@@ -41,8 +42,7 @@ web3.eth.getAccounts().then((accounts) => {
 
   // Register oracles ===
   const promises = [];
-  const shiftIndex = 10; // Reserve first 10 addresses for airlines
-  for (let i = shiftIndex; i < ORACLES_COUNT + shiftIndex; i++) {
+  for (let i = INDEX_OFFSET; i < ORACLES_COUNT + INDEX_OFFSET; i++) {
     let p = flightSuretyApp.methods
       .registerOracle()
       .send({
